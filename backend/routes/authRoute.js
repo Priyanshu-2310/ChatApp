@@ -3,6 +3,7 @@ const router = express.Router();
 const userModel = require("../models/userSchema");
 const sgMail = require("@sendgrid/mail");
 require("dotenv").config();
+const bcrypt = require('bcrypt')
 
 sgMail.setApiKey(process.env.SENDGRID_KEY);
 
@@ -69,5 +70,37 @@ router.post("/verifyotp", async function (req, res) {
 
   return res.json({ message: "OTP Verified Successfully!" });
 });
+
+router.post('/login', async function (req, res) {
+  try {
+    const { email, password } = req.body;
+
+    // 1. Check if user exists
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    // 2. Check if user is verified (OTP verified)
+    if (!user.isVerified) {
+      return res.status(400).json({ message: "User is not verified. Please verify OTP." });
+    }
+
+    // 3. Compare password using bcrypt
+    const isMatch = (user.password == password)
+    if (!isMatch) {
+      return res.status(400).json({ message: "Incorrect password" });
+    }
+
+    // 4. If everything is ok
+    return res.status(200).json({ message: "Login successful" });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+
 
 module.exports = router;
